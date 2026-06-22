@@ -1,0 +1,132 @@
+# ---------------------------------------------------------------
+# Sistema operativo / editor
+# ---------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ---------------------------------------------------------------
+# Herramientas locales que no aportan al repositorio
+# ---------------------------------------------------------------
+.atl/
+
+# Enunciado recibido por correo; se conserva localmente, no se publica.
+Prueba Tecnica.pdf
+
+
+# ---------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+.python-version-local
+
+# Distribución / empaquetado
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+MANIFEST
+
+# Testeo y cobertura
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+
+# Validadores de tipos / linters
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------
+# Credenciales y secretos
+# ---------------------------------------------------------------
+# Cuidado: NO usar un "*.json" global porque romperia configs utiles.
+# Se ignoran patrones especificos de credenciales de servicio.
+*-credentials.json
+*-credential.json
+service-account*.json
+service_account*.json
+gcp-*.json
+google-*.json
+*sa-key*.json
+secrets/
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------------------------------
+# Terraform
+# ---------------------------------------------------------------
+# Estado y planes locales NUNCA se versionan (pueden contener secretos)
+**/terraform.tfstate
+**/terraform.tfstate.*
+**/*.tfstate
+**/*.tfstate.*
+.terraform/
+*.tfplan
+crash.log
+crash.*.log
+
+# Variables locales de Terraform (suelen contener secretos)
+*.tfvars
+!*.tfvars.example
+terraform.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# ---------------------------------------------------------------
+# Airflow
+# ---------------------------------------------------------------
+airflow.db
+airflow-webserver.pid
+unittests.cfg
+.logs/
+
+# ---------------------------------------------------------------
+# Logs
+# ---------------------------------------------------------------
+logs/
+*.log
+
+# ---------------------------------------------------------------
+# IDE / editores
+# ---------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ---------------------------------------------------------------
+# Datos locales (no versionar datos reales de la prueba)
+# ---------------------------------------------------------------
+data/raw/
+data/processed/
+*.csv
+*.parquet
+*.jsonl
+!tests/**/*.csv
+!tests/**/*.jsonl

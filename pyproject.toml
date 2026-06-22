@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alten-pipeline"
+version = "0.1.0"
+description = "Pipeline de datos para la prueba técnica de Alten (Data Engineer)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Propietario - uso evaluativo" }
+authors = [
+    { name = "Alejandro Bosch" },
+]
+keywords = ["etl", "bigquery", "airflow", "data-engineering"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Database",
+    "Operating System :: OS Independent",
+]
+
+# Dependencias previstas mínimas del proyecto.
+# Se mantienen a propósito reducidas; se ampliarán por fase.
+dependencies = [
+    "requests>=2.31",
+    "google-cloud-bigquery>=3.20",
+]
+
+[project.optional-dependencies]
+# Herramientas de desarrollo y calidad.
+# Nota: ruff incluye formateador (`ruff format`) que puede reemplazar a black.
+# Se incluye black como opción para respetar preferencias del evaluador.
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "ruff>=0.5",
+    "black>=24.4",
+]
+
+[project.urls]
+Repository = "https://github.com/Alejbc27/alten-case"
+
+# ---------------------------------------------------------------
+# Configuración del paquete (src layout)
+# ---------------------------------------------------------------
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# ---------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+markers = [
+    "integration: pruebas que requieren recursos externos (GCP, red).",
+    "slow: pruebas con tiempos de ejecución altos.",
+]
+
+# ---------------------------------------------------------------
+# Ruff (lint + formato)
+# ---------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+# ---------------------------------------------------------------
+# Black
+# ---------------------------------------------------------------
+[tool.black]
+line-length = 100
+target-version = ["py311"]
