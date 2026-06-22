@@ -1,0 +1,2 @@
+# Esta carpeta contendra la definicion de infraestructura como codigo (Terraform)
+# para los recursos en GCP. Se conserva en el repositorio mediante .gitkeep.

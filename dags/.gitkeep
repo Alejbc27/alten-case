@@ -1,0 +1,2 @@
+# Esta carpeta contendra los DAGs de Airflow una vez implementada la orquestacion.
+# Se conserva en el repositorio mediante .gitkeep.
