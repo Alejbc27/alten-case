@@ -1,0 +1,20 @@
+[
+  {
+    "id": "5128a6f5-6b7c-4d8e-9f01-2a3b4c5d6e7f",
+    "name": "Black Hammer Brewing",
+    "brewery_type": "micro",
+    "address_1": null,
+    "address_2": null,
+    "address_3": null,
+    "city": "San Francisco",
+    "state_province": "California",
+    "postal_code": "94107",
+    "country": "United States",
+    "longitude": "-122.3911",
+    "latitude": "37.7783",
+    "phone": null,
+    "website_url": null,
+    "state": "California",
+    "street": null
+  }
+]
