@@ -180,7 +180,7 @@ class TestUpload:
 
 
 class TestEnsureDatasetErrors:
-    """Cubre fallos durante la preparación del dataset (Warning de revisión).
+    """Cubre fallos durante la preparación del dataset.
 
     Por coherencia con `upload()`, los fallos del cliente durante
     `ensure_dataset_exists()` se envuelven en `BigQueryUploadError`.

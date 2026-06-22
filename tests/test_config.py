@@ -23,6 +23,7 @@ _API_VARS = (
     "API_PER_PAGE",
     "API_TIMEOUT_SECONDS",
     "API_MAX_RETRIES",
+    "API_MAX_RECORDS",
 )
 
 # Variables de BigQuery.
@@ -133,3 +134,53 @@ class TestSettingsBigQuery:
 
         assert settings.log_level == "WARNING"
         assert isinstance(settings.log_level, str)
+
+
+class TestSettingsMaxRecords:
+    """Límite configurable de registros a descargar (ajuste de enunciado)."""
+
+    def test_default_es_100_cuando_ausente(self, monkeypatch):
+        # Por defecto, la descarga se limita a 100 registros para no consumir
+        # toda la API en la ejecución normal de la prueba.
+        for var in _API_VARS:
+            monkeypatch.delenv(var, raising=False)
+
+        settings = Settings.from_env()
+
+        assert settings.api_max_records == 100
+
+    def test_cero_significa_descargar_todo(self, monkeypatch):
+        # API_MAX_RECORDS=0 desactiva el límite (descarga completa).
+        monkeypatch.setenv("API_MAX_RECORDS", "0")
+
+        settings = Settings.from_env()
+
+        assert settings.api_max_records is None
+
+    def test_valor_personalizado_se_aplica(self, monkeypatch):
+        monkeypatch.setenv("API_MAX_RECORDS", "200")
+
+        settings = Settings.from_env()
+
+        assert settings.api_max_records == 200
+
+    def test_vacio_cae_en_default(self, monkeypatch):
+        # Variable definida pero vacía → default (100), consistente con el
+        # tratamiento de otras variables opcionales.
+        monkeypatch.setenv("API_MAX_RECORDS", "")
+
+        settings = Settings.from_env()
+
+        assert settings.api_max_records == 100
+
+    def test_valor_negativo_es_invalido(self, monkeypatch):
+        monkeypatch.setenv("API_MAX_RECORDS", "-1")
+
+        with pytest.raises(ValueError, match="API_MAX_RECORDS"):
+            Settings.from_env()
+
+    def test_valor_no_numerico_es_invalido(self, monkeypatch):
+        monkeypatch.setenv("API_MAX_RECORDS", "abc")
+
+        with pytest.raises(ValueError):
+            Settings.from_env()

@@ -25,6 +25,10 @@ class Settings:
     api_per_page: int = 50
     api_timeout_seconds: float = 30
     api_max_retries: int = 3
+    # Límite de registros a descargar. Por defecto 100 para no consumir toda
+    # la API en la ejecución normal de la prueba. ``None`` (o 0 en la variable
+    # de entorno) significa descargar todo. Los valores negativos son inválidos.
+    api_max_records: int | None = 100
 
     # --- Carga BigQuery (parte 2-2) ---
     # ``bq_project`` es obligatorio para ejecutar contra BigQuery, pero se deja
@@ -51,9 +55,26 @@ class Settings:
             api_per_page=int(os.environ.get("API_PER_PAGE", "50")),
             api_timeout_seconds=float(os.environ.get("API_TIMEOUT_SECONDS", "30")),
             api_max_retries=int(os.environ.get("API_MAX_RETRIES", "3")),
+            api_max_records=_parse_max_records(os.environ.get("API_MAX_RECORDS")),
             bq_project=os.environ.get("BQ_PROJECT") or None,
             bq_dataset=os.environ.get("BQ_DATASET", "SANDBOX_alten_pipeline"),
             bq_table=os.environ.get("BQ_TABLE", "raw_breweries"),
             bq_location=os.environ.get("BQ_LOCATION", "US"),
             log_level=os.environ.get("LOG_LEVEL", "INFO"),
         )
+
+
+def _parse_max_records(raw: str | None) -> int | None:
+    """Interpreta ``API_MAX_RECORDS``.
+
+    - Ausente o vacío → 100 (default razonable para la prueba).
+    - ``0`` → ``None`` (descargar todo).
+    - Entero positivo → ese valor.
+    - Entero negativo → error de configuración.
+    """
+    if not raw:
+        return 100
+    parsed = int(raw)
+    if parsed < 0:
+        raise ValueError("API_MAX_RECORDS no puede ser negativo")
+    return parsed or None

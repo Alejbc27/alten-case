@@ -64,6 +64,7 @@ def run(
             per_page=settings.api_per_page,
             timeout=settings.api_timeout_seconds,
             max_retries=settings.api_max_retries,
+            max_records=settings.api_max_records,
         )
 
     run_id = getattr(brewery_client, "run_id", "desconocido")
