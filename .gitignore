@@ -71,6 +71,9 @@ service_account*.json
 gcp-*.json
 google-*.json
 *sa-key*.json
+*-sa.json
+# Directorio de claves generado por Terraform (local_sensitive_file).
+.secrets/
 secrets/
 .env
 .env.*
