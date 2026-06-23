@@ -17,6 +17,7 @@ Estrategia en dos capas, alineada con `tests/test_transform_sql.py`:
 
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 
@@ -233,24 +234,22 @@ def test_start_precede_a_end_sin_ciclos(airflow_dag) -> None:
     assert orden.index("time_diff") < orden.index("end")
 
 
-def test_time_diff_execute_registra_diferencia(time_diff_cls, monkeypatch) -> None:
+def test_time_diff_execute_registra_diferencia(time_diff_cls, caplog) -> None:
     # Triangulación caso 1: la fecha de referencia aparece en el log.
+    # ``BaseOperator.log`` hereda de ``LoggingMixin`` como propiedad de solo
+    # lectura (no admite ``setattr``), por lo que se captura con ``caplog`` vía
+    # el framework estándar ``logging`` en lugar de reemplazarla con
+    # ``monkeypatch``.
     op = time_diff_cls(task_id="t1", diff_date="2024-01-01")
-    mensajes: list[str] = []
-    monkeypatch.setattr(
-        op, "log", type("L", (), {"info": lambda self, msg, *a: mensajes.append(msg % a)})()
-    )
-    op.execute(context={})
-    assert mensajes, "TimeDiff.execute no registró ningún mensaje"
-    assert "2024-01-01" in mensajes[0]
+    with caplog.at_level(logging.INFO):
+        op.execute(context={})
+    assert caplog.records, "TimeDiff.execute no registró ningún mensaje"
+    assert "2024-01-01" in caplog.text
 
 
-def test_time_diff_execute_con_otra_fecha(time_diff_cls, monkeypatch) -> None:
+def test_time_diff_execute_con_otra_fecha(time_diff_cls, caplog) -> None:
     # Triangulación caso 2: otra fecha produce un log distinto con esa fecha.
     op = time_diff_cls(task_id="t2", diff_date="2000-06-15")
-    mensajes: list[str] = []
-    monkeypatch.setattr(
-        op, "log", type("L", (), {"info": lambda self, msg, *a: mensajes.append(msg % a)})()
-    )
-    op.execute(context={})
-    assert "2000-06-15" in mensajes[0]
+    with caplog.at_level(logging.INFO):
+        op.execute(context={})
+    assert "2000-06-15" in caplog.text
