@@ -30,7 +30,7 @@ class FakeBigQueryJob:
         self._output_rows = output_rows
         self.result_called = False
 
-    def result(self) -> "FakeBigQueryJob":
+    def result(self) -> FakeBigQueryJob:
         self.result_called = True
         return self
 

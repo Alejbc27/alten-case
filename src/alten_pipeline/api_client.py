@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
@@ -177,7 +177,7 @@ class BreweryClient:
             "website_url": record.get("website_url"),
             "longitude": _to_float(record.get("longitude")),
             "latitude": _to_float(record.get("latitude")),
-            "ingestion_ts": datetime.now(timezone.utc).isoformat(),
+            "ingestion_ts": datetime.now(UTC).isoformat(),
             "ingestion_run_id": run_id,
             "source_payload": json.dumps(record),
         }

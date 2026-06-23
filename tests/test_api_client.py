@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -102,11 +102,11 @@ class TestNormalize:
     def test_campos_de_trazabilidad(self) -> None:
         run_id = "22222222-2222-2222-2222-222222222222"
         record = load_fixture("breweries_page1.json")[0]
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
 
         normalized = BreweryClient._normalize(record, run_id)
 
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
         # ingestion_run_id es el UUID de la corrida recibido.
         assert normalized["ingestion_run_id"] == run_id
         # ingestion_ts es un string ISO 8601 (serializable a JSON) que representa
@@ -114,7 +114,7 @@ class TestNormalize:
         ts_str = normalized["ingestion_ts"]
         assert isinstance(ts_str, str)
         ts = datetime.fromisoformat(ts_str)
-        assert ts.tzinfo == timezone.utc
+        assert ts.tzinfo == UTC
         assert before <= ts <= after
         # source_payload contiene el JSON crudo original.
         assert normalized["source_payload"] == json.dumps(record)

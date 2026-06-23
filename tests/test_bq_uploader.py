@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from alten_pipeline.bq_uploader import BigQueryUploadError, BigQueryUploader
+from alten_pipeline.bq_uploader import BigQueryUploader, BigQueryUploadError
 
 
 def make_uploader(client, **overrides):

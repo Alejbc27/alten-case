@@ -18,7 +18,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from .api_client import BreweryClient
-from .bq_uploader import BigQueryUploadError, BigQueryUploader
+from .bq_uploader import BigQueryUploader, BigQueryUploadError
 from .config import Settings
 
 logger = logging.getLogger("alten_pipeline")

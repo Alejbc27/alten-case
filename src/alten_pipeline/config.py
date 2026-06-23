@@ -41,7 +41,7 @@ class Settings:
     log_level: str = "INFO"
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         """Construye ``Settings`` desde variables de entorno.
 
         Ninguna variable es obligatoria aquí: todos los campos tienen valor
