@@ -1,20 +1,7 @@
-# ------------------------------------------------------------------
-# Entorno local de Apache Airflow para el DAG `test` (parte 3).
+# Entorno local de Apache Airflow para el DAG `test`.
 #
-# Uso:
-#   docker compose up -d
-#   # Web UI: http://localhost:8080  (usuario: airflow / contraseña: airflow)
-#   docker compose down            # detener
-#   docker compose down -v         # detener y borrar la BD SQLite local
-#
-# Decisiones de diseño (sdd/airflow-dag-test/design):
-#   - Imagen pinneada apache/airflow:2.10.5 (último 2.x estable).
-#   - Backend SQLite (default de Airflow): suficiente para un DAG de prueba
-#     sin concurrencia; el volumen nombrado `airflow-data` lo comparten los
-#     tres servicios para que `init` escriba la BD y webserver/scheduler la lean.
-#   - SequentialExecutor: el único ejecutor compatible con SQLite.
-#   - Sin fichero `.env`, sin secretos reales ni credenciales GCP.
-# ------------------------------------------------------------------
+#   docker compose up -d      # Web UI: http://localhost:8080 (airflow/airflow)
+#   docker compose down -v    # detener y borrar la BD local
 
 x-airflow-common: &airflow-common
   image: apache/airflow:2.10.5
@@ -27,16 +14,11 @@ x-airflow-common: &airflow-common
   volumes:
     - ./dags:/opt/airflow/dags
     - airflow-data:/opt/airflow
-  # Airflow corre como UID 50000 dentro de la imagen. En macOS funciona sin
-  # ajustes; en Linux, si hay problemas de permisos sobre ./dags, exportar
-  # `AIRFLOW_UID=$(id -u)` antes de levantar el compose.
   user: "${AIRFLOW_UID:-50000}:0"
 
 services:
-  # Servicio one-shot: inicializa la metadata DB y crea el usuario admin.
   init:
     <<: *airflow-common
-    container_name: airflow-init
     entrypoint: /bin/bash
     command:
       - -c
@@ -49,29 +31,19 @@ services:
 
   webserver:
     <<: *airflow-common
-    container_name: airflow-webserver
     depends_on:
       init:
         condition: service_completed_successfully
     ports:
       - "8080:8080"
     command: webserver
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: unless-stopped
 
   scheduler:
     <<: *airflow-common
-    container_name: airflow-scheduler
     depends_on:
       init:
         condition: service_completed_successfully
     command: scheduler
-    restart: unless-stopped
 
 volumes:
   airflow-data:
