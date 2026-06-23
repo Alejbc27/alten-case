@@ -14,12 +14,12 @@ output "service_account_email" {
 }
 
 output "sa_key_path" {
-  description = "Local path of the generated SA JSON key."
+  description = "Local path of the generated SA JSON key. null cuando create_sa_key=false."
   value       = module.service_account.key_path
 }
 
 output "sa_private_key" {
-  description = "Raw SA key JSON (sensitive; also in state)."
+  description = "Raw SA key JSON (sensitive; also in state). null cuando create_sa_key=false."
   value       = module.service_account.private_key
   sensitive   = true
 }

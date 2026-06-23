@@ -15,5 +15,6 @@ module "service_account" {
   account_id      = var.sa_account_id
   project         = var.gcp_project
   dataset_ids     = module.bigquery.dataset_ids
+  create_key      = var.create_sa_key
   key_output_path = var.sa_key_output_path
 }

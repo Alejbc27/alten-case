@@ -23,9 +23,15 @@ variable "sa_account_id" {
 }
 
 variable "sa_key_output_path" {
-  description = "Local path where the generated SA JSON key is written. Relative to the terraform/ working directory."
+  description = "Local path where the generated SA JSON key is written. Solo aplica cuando create_sa_key=true. Relativo al directorio terraform/."
   type        = string
   default     = "../.secrets/alten-pipeline-sa.json"
+}
+
+variable "create_sa_key" {
+  description = "Si true, Terraform crea una Service Account Key JSON y la escribe en sa_key_output_path (la clave privada queda en el state). Si false (default), no crea ninguna clave: usá un JSON existente o Application Default Credentials."
+  type        = bool
+  default     = false
 }
 
 variable "dataset_names" {
