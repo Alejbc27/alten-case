@@ -166,3 +166,92 @@ class TestRun:
         assert any("no hay registros" in m.lower() or "sin datos" in m.lower() for m in mensajes), (
             "La corrida vacía debe loguear que no hay datos"
         )
+
+
+class TestMainCargaDotenv:
+    """Cubre la carga automática de `.env` en el entrypoint CLI (`main`).
+
+    `main()` invoca `load_dotenv(override=False)` ANTES de `Settings.from_env()`
+    para que las variables del archivo `.env` estén disponibles, sin sobrescribir
+    las variables de entorno reales (que mantienen prioridad).
+
+    Nota: necesitamos el *módulo* `alten_pipeline.main` (no la función `main`)
+    para hacer `monkeypatch.setattr` sobre `load_dotenv`/`run`/`Settings`. Lo
+    obtenemos vía `sys.modules["alten_pipeline.main"]`, poblado al importar la
+    función con `from alten_pipeline.main import main`.
+    """
+
+    @staticmethod
+    def _main_module():
+        import sys
+
+        return sys.modules["alten_pipeline.main"]
+
+    def test_main_invoca_load_dotenv(self, monkeypatch):
+        from alten_pipeline.main import main as main_fn
+
+        main_mod = self._main_module()
+        llamado = {"dotenv": False}
+
+        def fake_load_dotenv(*args, **kwargs):
+            llamado["dotenv"] = True
+            return True
+
+        monkeypatch.setattr(main_mod, "load_dotenv", fake_load_dotenv)
+        monkeypatch.setattr(main_mod, "run", lambda settings: 0)
+
+        rc = main_fn()
+
+        assert llamado["dotenv"] is True
+        assert rc == 0
+
+    def test_main_usa_override_false_para_preservar_entorno_real(self, monkeypatch):
+        from alten_pipeline.main import main as main_fn
+
+        main_mod = self._main_module()
+        capturado: dict = {}
+
+        def fake_load_dotenv(*args, **kwargs):
+            capturado.update(kwargs)
+            return True
+
+        monkeypatch.setattr(main_mod, "load_dotenv", fake_load_dotenv)
+        monkeypatch.setattr(main_mod, "run", lambda settings: 0)
+
+        main_fn()
+
+        # override=False => las variables de entorno reales NO se sobrescriben
+        # con las del archivo .env; el entorno del proceso manda.
+        assert capturado.get("override") is False
+
+    def test_main_llama_load_dotenv_antes_que_settings_from_env(self, monkeypatch):
+        from alten_pipeline.main import main as main_fn
+
+        main_mod = self._main_module()
+        orden: list[str] = []
+        monkeypatch.setattr(
+            main_mod, "load_dotenv", lambda *a, **k: orden.append("dotenv") or True
+        )
+        monkeypatch.setattr(
+            main_mod.Settings,
+            "from_env",
+            lambda: orden.append("settings") or Settings(),
+        )
+        monkeypatch.setattr(main_mod, "run", lambda settings: 0)
+
+        main_fn()
+
+        assert orden == ["dotenv", "settings"]
+
+    def test_main_es_seguro_si_no_hay_archivo_env(self, monkeypatch):
+        # load_dotenv() retorna False (y no lanza) cuando no encuentra .env.
+        # main() debe continuar con normalidad usando solo el entorno real.
+        from alten_pipeline.main import main as main_fn
+
+        main_mod = self._main_module()
+        monkeypatch.setattr(main_mod, "load_dotenv", lambda *a, **k: False)
+        monkeypatch.setattr(main_mod, "run", lambda settings: 0)
+
+        rc = main_fn()
+
+        assert rc == 0

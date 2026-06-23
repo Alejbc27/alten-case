@@ -160,7 +160,9 @@ class BreweryClient:
 
         Los campos nulos se preservan como ``None``. Las coordenadas se
         castean a ``float`` y el payload original se conserva en
-        ``source_payload`` como cadena JSON.
+        ``source_payload`` como cadena JSON. ``ingestion_ts`` se emite como
+        string ISO 8601 (timezone-aware UTC) para que la fila completa sea
+        serializable a JSON — BigQuery infiere TIMESTAMP desde el string ISO.
         """
         return {
             "id": record.get("id"),
@@ -175,7 +177,7 @@ class BreweryClient:
             "website_url": record.get("website_url"),
             "longitude": _to_float(record.get("longitude")),
             "latitude": _to_float(record.get("latitude")),
-            "ingestion_ts": datetime.now(timezone.utc),
+            "ingestion_ts": datetime.now(timezone.utc).isoformat(),
             "ingestion_run_id": run_id,
             "source_payload": json.dumps(record),
         }

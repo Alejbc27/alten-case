@@ -109,12 +109,31 @@ class TestNormalize:
         after = datetime.now(timezone.utc)
         # ingestion_run_id es el UUID de la corrida recibido.
         assert normalized["ingestion_run_id"] == run_id
-        # ingestion_ts es timezone-aware en UTC y reciente.
-        ts: datetime = normalized["ingestion_ts"]
+        # ingestion_ts es un string ISO 8601 (serializable a JSON) que representa
+        # un instante timezone-aware en UTC y reciente.
+        ts_str = normalized["ingestion_ts"]
+        assert isinstance(ts_str, str)
+        ts = datetime.fromisoformat(ts_str)
         assert ts.tzinfo == timezone.utc
         assert before <= ts <= after
         # source_payload contiene el JSON crudo original.
         assert normalized["source_payload"] == json.dumps(record)
+
+    def test_fila_normalizada_es_json_serializable(self) -> None:
+        # BigQuery load_table_from_json serializa las filas con json.dumps; ningún
+        # campo puede ser un datetime crudo (lanzaría TypeError). ingestion_ts
+        # sale como ISO 8601 string para que la fila completa sea serializable.
+        record = load_fixture("breweries_page1.json")[0]
+
+        normalized = BreweryClient._normalize(record, "run-serial")
+
+        assert isinstance(normalized["ingestion_ts"], str)
+        # La fila completa se serializa sin error.
+        serialized = json.dumps(normalized)
+        assert isinstance(serialized, str)
+        # El string ISO se reconstruye a datetime timezone-aware.
+        ts = datetime.fromisoformat(normalized["ingestion_ts"])
+        assert ts.tzinfo is not None
 
     def test_campos_nulos_se_preservan_como_none(self) -> None:
         run_id = "33333333-3333-3333-3333-333333333333"

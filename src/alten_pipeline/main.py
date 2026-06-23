@@ -15,6 +15,8 @@ import logging
 import sys
 from typing import Any
 
+from dotenv import load_dotenv
+
 from .api_client import BreweryClient
 from .bq_uploader import BigQueryUploadError, BigQueryUploader
 from .config import Settings
@@ -105,6 +107,9 @@ def run(
 
 def main(argv: list[str] | None = None) -> int:
     """Punto de entrada CLI: lee configuración y ejecuta la corrida."""
+    # Carga `.env` si existe. Con ``override=False`` (default) las variables de
+    # entorno reales del proceso mantienen prioridad sobre las del archivo.
+    load_dotenv(override=False)
     settings = Settings.from_env()
     logging.basicConfig(
         level=getattr(logging, settings.log_level.upper(), logging.INFO),
