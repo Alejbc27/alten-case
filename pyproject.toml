@@ -25,6 +25,7 @@ classifiers = [
 dependencies = [
     "requests>=2.31",
     "google-cloud-bigquery>=3.20",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

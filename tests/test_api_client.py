@@ -109,12 +109,31 @@ class TestNormalize:
         after = datetime.now(timezone.utc)
         # ingestion_run_id es el UUID de la corrida recibido.
         assert normalized["ingestion_run_id"] == run_id
-        # ingestion_ts es timezone-aware en UTC y reciente.
-        ts: datetime = normalized["ingestion_ts"]
+        # ingestion_ts es un string ISO 8601 (serializable a JSON) que representa
+        # un instante timezone-aware en UTC y reciente.
+        ts_str = normalized["ingestion_ts"]
+        assert isinstance(ts_str, str)
+        ts = datetime.fromisoformat(ts_str)
         assert ts.tzinfo == timezone.utc
         assert before <= ts <= after
         # source_payload contiene el JSON crudo original.
         assert normalized["source_payload"] == json.dumps(record)
+
+    def test_fila_normalizada_es_json_serializable(self) -> None:
+        # BigQuery load_table_from_json serializa las filas con json.dumps; ningún
+        # campo puede ser un datetime crudo (lanzaría TypeError). ingestion_ts
+        # sale como ISO 8601 string para que la fila completa sea serializable.
+        record = load_fixture("breweries_page1.json")[0]
+
+        normalized = BreweryClient._normalize(record, "run-serial")
+
+        assert isinstance(normalized["ingestion_ts"], str)
+        # La fila completa se serializa sin error.
+        serialized = json.dumps(normalized)
+        assert isinstance(serialized, str)
+        # El string ISO se reconstruye a datetime timezone-aware.
+        ts = datetime.fromisoformat(normalized["ingestion_ts"])
+        assert ts.tzinfo is not None
 
     def test_campos_nulos_se_preservan_como_none(self) -> None:
         run_id = "33333333-3333-3333-3333-333333333333"
@@ -299,3 +318,89 @@ class TestFetchAll:
 
         assert records == []
         assert len(session.calls) == 1
+
+
+# ---------------------------------------------------------------------------
+# fetch_all con límite de registros (API_MAX_RECORDS)
+# ---------------------------------------------------------------------------
+
+
+class TestFetchAllMaxRecords:
+    """Cubre el límite configurable de registros en la descarga.
+
+    El límite detiene la descarga (no descarga todo para truncar después), de
+    forma que la ejecución normal de la prueba no consuma toda la API.
+    """
+
+    def test_max_records_negativo_es_invalido(self) -> None:
+        with pytest.raises(ValueError, match="max_records"):
+            BreweryClient(base_url="https://example.test/breweries", max_records=-1)
+
+    def test_limite_detiene_descarga_sin_pedir_paginas_extra(self) -> None:
+        # max_records=2 con página de 2 registros: alcanza el límite en la
+        # primera página y NO pide la siguiente.
+        page = load_fixture("breweries_page1.json")[:2]
+        # Se ofrecen 3 páginas (la última vacía); solo debe consumirse la 1ª.
+        # Sin el corte, el bucle terminaría en la página vacía tras 3 llamadas,
+        # y la aserción len(calls)==1 fallaría de forma clara.
+        session = FakeSession([FakeResponse(page), FakeResponse(page), FakeResponse([])])
+        client = BreweryClient(
+            base_url="https://example.test/breweries",
+            per_page=2,
+            max_records=2,
+            session=session,
+        )
+
+        records = client.fetch_all()
+
+        assert len(records) == 2
+        assert len(session.calls) == 1
+
+    def test_limite_trunca_cuando_una_pagina_supera_el_limite(self) -> None:
+        # max_records=3 con una sola página de 4 registros: trunca a 3 y no
+        # pide más páginas.
+        page = load_fixture("breweries_page1.json")  # 3 registros
+        big_page = page + [{"id": "extra-1", "name": "Extra", "brewery_type": "micro"}]
+        session = FakeSession(
+            [FakeResponse(big_page), FakeResponse(big_page), FakeResponse([])]
+        )
+        client = BreweryClient(
+            base_url="https://example.test/breweries",
+            per_page=4,
+            max_records=3,
+            session=session,
+        )
+
+        records = client.fetch_all()
+
+        assert len(records) == 3
+        assert len(session.calls) == 1
+
+    def test_limite_none_descarga_todo_hasta_pagina_vacia(self) -> None:
+        # max_records=None → comportamiento original (sin límite).
+        page = load_fixture("breweries_page1.json")
+        session = FakeSession([FakeResponse(page), FakeResponse([])])
+        client = BreweryClient(
+            base_url="https://example.test/breweries",
+            max_records=None,
+            session=session,
+        )
+
+        records = client.fetch_all()
+
+        assert len(records) == len(page)
+        assert [c["params"]["page"] for c in session.calls] == [1, 2]
+
+    def test_limite_cero_es_equivalente_a_none(self) -> None:
+        # 0 se trata como "sin límite" (descargar todo).
+        page = load_fixture("breweries_page1.json")
+        session = FakeSession([FakeResponse(page), FakeResponse([])])
+        client = BreweryClient(
+            base_url="https://example.test/breweries",
+            max_records=0,
+            session=session,
+        )
+
+        records = client.fetch_all()
+
+        assert len(records) == len(page)

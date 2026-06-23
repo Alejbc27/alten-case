@@ -37,6 +37,10 @@ class BreweryClient:
         Timeout HTTP por solicitud, en segundos.
     max_retries:
         Reintentos ante errores transitorios (5xx, 429, timeout de red).
+    max_records:
+        Número máximo de registros a descargar. ``None`` o ``0`` significan
+        descargar todo. Si se alcanza el límite, la descarga se detiene
+        (truncando la última página si la excede).
     run_id:
         Identificador UUID de la corrida. Si se omite, se genera uno nuevo.
     session:
@@ -53,6 +57,7 @@ class BreweryClient:
         per_page: int = 50,
         timeout: float = 30,
         max_retries: int = 3,
+        max_records: int | None = None,
         run_id: str | None = None,
         session: requests.Session | None = None,
     ) -> None:
@@ -60,6 +65,10 @@ class BreweryClient:
         self.per_page = per_page
         self.timeout = timeout
         self.max_retries = max_retries
+        if max_records is not None and max_records < 0:
+            raise ValueError("max_records no puede ser negativo")
+        # ``0`` se normaliza a ``None`` (descargar todo de forma explícita).
+        self.max_records = max_records or None
         self.run_id = run_id or str(uuid.uuid4())
         self._session = session or requests.Session()
 
@@ -77,6 +86,10 @@ class BreweryClient:
         Cada registro crudo se normaliza con ``self.run_id`` para trazabilidad.
         La paginación es incremental (``page = 1, 2, 3, ...``) y se detiene en
         la primera respuesta vacía, que marca el fin de los resultados.
+
+        Si ``max_records`` está configurado, la descarga se detiene al alcanzar
+        ese número de registros (truncando la última página si la excede), de
+        forma que la ejecución normal no consuma toda la API.
         """
         normalized: list[dict[str, Any]] = []
         page = 1
@@ -87,6 +100,8 @@ class BreweryClient:
             normalized.extend(
                 self._normalize(record, self.run_id) for record in raw_page
             )
+            if self.max_records is not None and len(normalized) >= self.max_records:
+                return normalized[: self.max_records]
             page += 1
         return normalized
 
@@ -145,7 +160,9 @@ class BreweryClient:
 
         Los campos nulos se preservan como ``None``. Las coordenadas se
         castean a ``float`` y el payload original se conserva en
-        ``source_payload`` como cadena JSON.
+        ``source_payload`` como cadena JSON. ``ingestion_ts`` se emite como
+        string ISO 8601 (timezone-aware UTC) para que la fila completa sea
+        serializable a JSON — BigQuery infiere TIMESTAMP desde el string ISO.
         """
         return {
             "id": record.get("id"),
@@ -160,7 +177,7 @@ class BreweryClient:
             "website_url": record.get("website_url"),
             "longitude": _to_float(record.get("longitude")),
             "latitude": _to_float(record.get("latitude")),
-            "ingestion_ts": datetime.now(timezone.utc),
+            "ingestion_ts": datetime.now(timezone.utc).isoformat(),
             "ingestion_run_id": run_id,
             "source_payload": json.dumps(record),
         }
