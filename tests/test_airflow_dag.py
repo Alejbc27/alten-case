@@ -4,7 +4,7 @@ Estrategia en dos capas, alineada con `tests/test_transform_sql.py`:
 
 1. **Tests estáticos (siempre se ejecutan, sin Airflow instalado)**: verifican
    que los archivos de producción existen y contienen los tokens contractuales
-   derivados del spec/design de `airflow-dag-test` (``dag_id``, schedule cron,
+   derivados del enunciado de la prueba (``dag_id``, schedule cron,
    ``default_args`` exactos, ``TimeDiff``, comentario Hook vs Connection,
    servicios del compose, montaje de ``dags/`` y ausencia de secretos GCP).
 
@@ -61,7 +61,7 @@ def test_compose_existe_y_no_esta_vacio(compose_source: str) -> None:
 
 
 def test_compose_define_webserver_y_scheduler(compose_source: str) -> None:
-    # El spec exige explícitamente ambos servicios visibles.
+    # El enunciado exige explícitamente ambos servicios visibles.
     assert "webserver" in compose_source, "Falta el servicio 'webserver'"
     assert "scheduler" in compose_source, "Falta el servicio 'scheduler'"
 
@@ -125,7 +125,7 @@ def test_dag_catchup_false(dag_source: str) -> None:
 
 
 def test_dag_default_args_exactos(dag_source: str) -> None:
-    # El enunciado fija los default_args; el spec exige coincidencia exacta.
+    # El enunciado fija los default_args y exige coincidencia exacta.
     # Se normalizan las comillas para no acoplarse al estilo de formato (ruff).
     src = dag_source.replace("'", '"')
     for token in (
@@ -211,9 +211,9 @@ def time_diff_cls():
     pytest.importorskip("airflow")
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("alten_test_dag", DAG_PATH)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    module_spec = importlib.util.spec_from_file_location("alten_test_dag", DAG_PATH)
+    module = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(module)
     return module.TimeDiff
 
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from airflow.models import DAG
-from airflow.models.baseoperator import BaseOperator
+from airflow.models.baseoperator import BaseOperator, chain
 from airflow.operators.empty import EmptyOperator
 
 # DummyOperator se eliminó en Airflow 2.7+. ``EmptyOperator`` es el operador
@@ -71,16 +71,16 @@ with DAG(
     time_diff = TimeDiff(task_id="time_diff", diff_date="2024-01-01")
     end = DummyOperator(task_id="end")
 
-    start >> task_1
-    start >> task_3
+    # Dependencias par/impar del enunciado, expresadas por niveles. ``chain``
+    # aplica cross-downstream entre niveles consecutivos (acepta un operador o
+    # una lista en cada nivel): ``start`` dispara las impares; las pares esperan
+    # a TODAS las impares; ``time_diff`` consolida las pares antes de ``end``.
+    # Sustituye al ``cross_downstream`` deprecado y al bitshift ``list >> list``
+    # (que Airflow no soporta cuando ambos lados son listas).
+    odd_tasks = [task_1, task_3]
+    even_tasks = [task_2, task_4]
 
-    # Regla del enunciado: las tareas pares dependen de TODAS las impares.
-    task_1 >> task_2
-    task_3 >> task_2
-    task_1 >> task_4
-    task_3 >> task_4
+    chain(start, odd_tasks, even_tasks, time_diff, end)
 
-    task_2 >> time_diff
-    task_4 >> time_diff
-    time_diff >> end
+    # Arista directa start → end exigida por el enunciado, paralela al flujo.
     start >> end
