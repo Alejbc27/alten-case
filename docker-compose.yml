@@ -1,0 +1,49 @@
+# Entorno local de Apache Airflow para el DAG `test`.
+#
+#   docker compose up -d      # Web UI: http://localhost:8080 (airflow/airflow)
+#   docker compose down -v    # detener y borrar la BD local
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.10.5
+  environment:
+    AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+    AIRFLOW__WEBSERVER__SECRET_KEY: "local-dev-secret-key"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - airflow-data:/opt/airflow
+  user: "${AIRFLOW_UID:-50000}:0"
+
+services:
+  init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate && \
+        airflow users create \
+          --username airflow --password airflow \
+          --firstname Air --lastname Flow \
+          --role Admin --email airflow@example.com || true
+
+  webserver:
+    <<: *airflow-common
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    command: webserver
+
+  scheduler:
+    <<: *airflow-common
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    command: scheduler
+
+volumes:
+  airflow-data:
