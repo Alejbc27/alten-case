@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from airflow.models import DAG
-from airflow.models.baseoperator import BaseOperator, chain
+from airflow.models.baseoperator import BaseOperator
 from airflow.operators.empty import EmptyOperator
 
 # DummyOperator se eliminó en Airflow 2.7+. ``EmptyOperator`` es el operador
@@ -71,16 +71,26 @@ with DAG(
     time_diff = TimeDiff(task_id="time_diff", diff_date="2024-01-01")
     end = DummyOperator(task_id="end")
 
-    # Dependencias par/impar del enunciado, expresadas por niveles. ``chain``
-    # aplica cross-downstream entre niveles consecutivos (acepta un operador o
-    # una lista en cada nivel): ``start`` dispara las impares; las pares esperan
-    # a TODAS las impares; ``time_diff`` consolida las pares antes de ``end``.
-    # Sustituye al ``cross_downstream`` deprecado y al bitshift ``list >> list``
-    # (que Airflow no soporta cuando ambos lados son listas).
+    # Dependencias par/impar del enunciado, por niveles:
+    #   start -> impares -> pares -> time_diff -> end
+    # más la arista directa start -> end (al final).
+    #
+    # Cada tarea par (task_2, task_4) debe depender de TODAS las impares
+    # (task_1, task_3): es un cross-downstream (all-to-all) entre niveles.
+    # El bitshift `list >> list` no está soportado por Airflow (las listas de
+    # Python no definen `>>`), y `chain()` con dos listas consecutivas empareja
+    # por posición (zip), no all-to-all. Por eso se itera sobre las pares:
+    # `odd_tasks >> even_task` se resuelve vía el operador reflejado
+    # `even_task.__rrshift__(odd_tasks)` y deja a cada par dependiendo de todas
+    # las impares.
     odd_tasks = [task_1, task_3]
     even_tasks = [task_2, task_4]
 
-    chain(start, odd_tasks, even_tasks, time_diff, end)
+    start >> odd_tasks
+    for even_task in even_tasks:
+        odd_tasks >> even_task
+    even_tasks >> time_diff
+    time_diff >> end
 
-    # Arista directa start → end exigida por el enunciado, paralela al flujo.
+    # Arista directa start -> end exigida por el enunciado, paralela al flujo.
     start >> end
