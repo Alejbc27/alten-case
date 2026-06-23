@@ -1,0 +1,54 @@
+# CI de validación para pull requests y pushes a main.
+#
+# Cobertura:
+#   - python:        instala dependencias, ejecuta pytest y ruff.
+#   - terraform:     fmt -check, init -backend=false y validate (sin backend GCS).
+#   - docker-compose: valida la estructura de docker-compose.yml sin levantar servicios.
+#
+# Sin secrets, sin auth GCP, sin terraform apply y sin deploy automático.
+# CD (despliegue) queda intencionalmente fuera: será un cambio futuro separado.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: uv sync --all-extras
+      - run: uv run pytest -q
+      - run: uv run ruff check .
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - run: terraform fmt -recursive -check
+        working-directory: terraform
+      - run: terraform init -backend=false
+        working-directory: terraform
+      - run: terraform validate
+        working-directory: terraform
+
+  docker-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config --quiet
