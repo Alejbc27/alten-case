@@ -13,7 +13,7 @@ lo que provoca un ``RuntimeWarning`` de runpy al ejecutar
 from __future__ import annotations
 
 from .api_client import ApiClientError, BreweryClient
-from .bq_uploader import BigQueryUploadError, BigQueryUploader
+from .bq_uploader import BigQueryUploader, BigQueryUploadError
 from .config import Settings
 
 __all__ = [

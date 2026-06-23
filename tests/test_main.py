@@ -13,7 +13,6 @@ que los tests no requieran `requests` en red ni `google-cloud-bigquery`.
 from __future__ import annotations
 
 import logging
-from types import SimpleNamespace
 
 import pytest
 
