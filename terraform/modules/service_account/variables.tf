@@ -14,6 +14,12 @@ variable "dataset_ids" {
 }
 
 variable "key_output_path" {
-  description = "Local path where the generated JSON key is written. The local provider creates the parent directory."
+  description = "Local path where the generated JSON key is written. Only used when create_key=true. The local provider creates the parent directory."
   type        = string
+}
+
+variable "create_key" {
+  description = "Si true, crea google_service_account_key y local_sensitive_file (la clave privada queda en el state). Si false (default defensivo), no crea ninguna clave: se asume un JSON existente o Application Default Credentials."
+  type        = bool
+  default     = false
 }

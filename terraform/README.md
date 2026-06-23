@@ -50,14 +50,42 @@ cp terraform.tfvars.example terraform.tfvars
 terraform apply
 ```
 
-Después del `apply`, usá la clave generada para ejecutar el pipeline Python:
+## Service Account Key: opcional
+
+La clave JSON de la cuenta de servicio es **opcional**. Hay dos modos,
+controlados por la variable `create_sa_key`:
+
+### `create_sa_key = false` (default recomendado)
+
+Terraform crea la Service Account y los bindings IAM, pero **no** crea ninguna
+clave nueva ni escribe archivos locales. Usalo cuando ya tengas un JSON
+descargado manualmente desde la consola, o cuando uses
+Application Default Credentials.
+
+Configura tu `.env` con la ruta del JSON existente:
+
+```bash
+# .env
+GOOGLE_APPLICATION_CREDENTIALS=/ruta/a/tu-sa-existente.json
+```
+
+Ventaja: ninguna clave privada nueva termina en el `terraform.tfstate`.
+
+### `create_sa_key = true`
+
+Terraform genera una `google_service_account_key`, la escribe en
+`sa_key_output_path` (por defecto `../.secrets/alten-pipeline-sa.json`) y la usa
+para ejecutar el pipeline:
 
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/../.secrets/alten-pipeline-sa.json"
 ```
 
-Si tu versión del provider `local` no crea el directorio automáticamente, crealo
-antes:
+Aviso: `google_service_account_key.private_key` queda guardada en el state
+remoto. El bucket GCS del state debe tratarse como sensible.
+
+Si tu versión del provider `local` no crea el directorio automáticamente,
+crealo antes:
 
 ```bash
 mkdir -p ../.secrets
@@ -67,7 +95,10 @@ mkdir -p ../.secrets
 
 - `terraform.tfvars`, `.terraform/`, `*.tfstate*`, `*.tfplan`, `.secrets/` y
   `*-sa.json` están ignorados por Git.
-- `google_service_account_key.private_key` queda guardada en el state remoto.
-  Por eso el bucket GCS del state debe tratarse como sensible.
-- Para esta prueba/sandbox es aceptable. En producción conviene usar Workload
-  Identity o credenciales de corta duración.
+- Con `create_sa_key = false` (default) ninguna clave privada se gestiona ni
+  almacena en Terraform: es el modo recomendado para esta prueba/sandbox.
+- Con `create_sa_key = true`, `google_service_account_key.private_key` queda
+  guardada en el state remoto. Por eso el bucket GCS del state debe tratarse
+  como sensible.
+- En producción conviene usar Workload Identity o credenciales de corta
+  duración.

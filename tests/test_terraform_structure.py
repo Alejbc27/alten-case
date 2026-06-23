@@ -211,6 +211,51 @@ def test_service_account_key_y_local_sensitive_file() -> None:
     assert "private_key" in hcl
 
 
+def test_service_account_key_es_opcional_con_count() -> None:
+    # La clave y el archivo local solo se crean cuando create_key=true.
+    hcl = _read("modules/service_account/main.tf")
+    assert "count              = var.create_key ? 1 : 0" in hcl
+    assert "count           = var.create_key ? 1 : 0" in hcl
+    # La referencia a la clave usa indice [0] (valido cuando count=1).
+    assert "google_service_account_key.this[0].private_key" in hcl
+
+
+def test_modulo_service_account_define_variable_create_key() -> None:
+    variables = _read("modules/service_account/variables.tf")
+    assert 'variable "create_key"' in variables
+    # Default defensivo en false: por defecto no se crea ninguna clave.
+    assert "default     = false" in variables
+
+
+def test_outputs_modulo_sa_soportan_create_key_false() -> None:
+    # Cuando create_key=false, los outputs de la clave deben resolver a null.
+    outputs = _read("modules/service_account/outputs.tf")
+    assert "var.create_key ? local_sensitive_file.sa_key[0].filename : null" in outputs
+    assert "var.create_key ? google_service_account_key.this[0].private_key : null" in outputs
+
+
+# ---------------------------------------------------------------------------
+# Variable raiz create_sa_key y cableo al modulo
+# ---------------------------------------------------------------------------
+def test_variable_raiz_create_sa_key_default_false() -> None:
+    variables = _read("variables.tf")
+    assert 'variable "create_sa_key"' in variables
+    assert "type        = bool" in variables
+    assert "default     = false" in variables
+
+
+def test_raiz_cablea_create_sa_key_al_modulo() -> None:
+    main = _read("main.tf")
+    assert "create_key      = var.create_sa_key" in main
+
+
+def test_tfvars_example_create_sa_key_false_y_sa_real() -> None:
+    tfvars = _read("terraform.tfvars.example")
+    assert 'create_sa_key = false' in tfvars
+    # La SA real del usuario para el ejemplo.
+    assert 'sa_account_id = "bq-alten-case"' in tfvars
+
+
 def test_raiz_cablea_ambos_modulos() -> None:
     main = _read("main.tf")
     assert 'module "bigquery"' in main
