@@ -1,66 +1,73 @@
-# Terraform — BigQuery + Service Account
+# Terraform — BigQuery y cuenta de servicio
 
-Modular Terraform for the Alten pipeline: two BigQuery datasets + tables, one
-service account with minimum IAM, and a JSON key written to disk for
-`GOOGLE_APPLICATION_CREDENTIALS`.
+Infraestructura mínima para la prueba técnica: crea los datasets y tablas de
+BigQuery, una cuenta de servicio con permisos mínimos y una clave JSON local para
+usar con `GOOGLE_APPLICATION_CREDENTIALS`.
 
-## Layout
+## Estructura
 
 ```
 terraform/
-├── versions.tf / backend.tf / providers.tf   # engine + provider + remote state
-├── variables.tf / main.tf / outputs.tf       # root orchestrator
-├── terraform.tfvars.example                  # non-sensitive defaults
+├── versions.tf / backend.tf / providers.tf   # versión, provider y state remoto
+├── variables.tf / main.tf / outputs.tf       # orquestador principal
+├── terraform.tfvars.example                  # valores de ejemplo no sensibles
 └── modules/
-    ├── bigquery/         # datasets + explicit table schemas
-    └── service_account/  # SA, IAM bindings, JSON key
+    ├── bigquery/         # datasets y schemas explícitos de tablas
+    └── service_account/  # cuenta de servicio, IAM y clave JSON
 ```
 
-## Prerequisites
+## Requisitos previos
 
-- A **pre-existing GCS bucket** for remote state. Terraform does not create it.
-- `terraform` >= 1.5 and the Google Cloud CLI authenticated as a project owner
-  (enough to create datasets, tables, a service account and IAM bindings).
+- Un **bucket GCS ya creado** para guardar el state remoto. Terraform no lo crea.
+- `terraform` >= 1.5.
+- Autenticación en GCP con permisos para crear datasets, tablas, Service Accounts
+  y bindings IAM.
 
-## Init (remote state)
+## Inicializar Terraform
 
-Backend config is intentionally empty in `backend.tf`; pass the bucket and
-prefix at init time:
+`backend.tf` no fija el bucket para evitar hardcodear valores locales. Pasalo al
+inicializar:
 
 ```bash
 cd terraform
 terraform init \
-  -backend-config="bucket=<your-bucket>" \
+  -backend-config="bucket=<tu-bucket>" \
   -backend-config="prefix=alten-case/terraform"
 ```
 
-To validate without touching remote state (CI / local checks):
+Para validar sin tocar el state remoto:
 
 ```bash
 terraform init -backend=false
 terraform validate
 ```
 
-## Apply
+## Aplicar cambios
 
 ```bash
-cp terraform.tfvars.example terraform.tfvars   # edit values
+cp terraform.tfvars.example terraform.tfvars
+# Editar terraform.tfvars con los valores reales
 terraform apply
 ```
 
-After apply, authenticate the Python pipeline with the generated key:
+Después del `apply`, usá la clave generada para ejecutar el pipeline Python:
 
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/../.secrets/alten-pipeline-sa.json"
 ```
 
-The `local` provider creates the parent directory of `sa_key_output_path`; if
-you use an older provider, create it first: `mkdir -p ../.secrets`.
+Si tu versión del provider `local` no crea el directorio automáticamente, crealo
+antes:
 
-## Security notes
+```bash
+mkdir -p ../.secrets
+```
 
-- `terraform.tfvars`, `.terraform/`, `*.tfstate*`, `*.tfplan`, `.secrets/` and
-  `*-sa.json` are git-ignored.
-- `google_service_account_key.private_key` is stored in remote state. The GCS
-  bucket must therefore be treated as secret-grade. Fine for this sandbox; not a
-  production pattern (use Workload Identity / short-lived credentials in prod).
+## Seguridad
+
+- `terraform.tfvars`, `.terraform/`, `*.tfstate*`, `*.tfplan`, `.secrets/` y
+  `*-sa.json` están ignorados por Git.
+- `google_service_account_key.private_key` queda guardada en el state remoto.
+  Por eso el bucket GCS del state debe tratarse como sensible.
+- Para esta prueba/sandbox es aceptable. En producción conviene usar Workload
+  Identity o credenciales de corta duración.
