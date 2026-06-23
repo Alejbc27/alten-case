@@ -1,6 +1,3 @@
-# ----------------------------------------------------------------------------
-# Datasets
-# ----------------------------------------------------------------------------
 resource "google_bigquery_dataset" "this" {
   for_each   = var.datasets
   project    = var.project
@@ -10,15 +7,7 @@ resource "google_bigquery_dataset" "this" {
   delete_contents_on_destroy = false
 }
 
-# ----------------------------------------------------------------------------
-# Table schemas (hardcoded, aligned 1:1 with production code)
-#
-# raw_breweries               -> src/alten_pipeline/api_client.py::_normalize()
-# integration_prueba_tecnica  -> sql/transform.sql final SELECT
-#
-# Explicit schemas keep Terraform as the source of truth and prevent drift on
-# re-apply when the Python uploader uses autodetect=False.
-# ----------------------------------------------------------------------------
+
 locals {
   raw_breweries_schema = jsonencode([
     { name = "id", type = "STRING", mode = "NULLABLE" },
