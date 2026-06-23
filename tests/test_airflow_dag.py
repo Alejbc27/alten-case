@@ -26,6 +26,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DAG_PATH = REPO_ROOT / "dags" / "test.py"
 COMPOSE_PATH = REPO_ROOT / "docker-compose.yml"
+DOCS_HOOKS_PATH = REPO_ROOT / "docs" / "airflow-hooks-vs-connections.md"
 
 
 # ------------------------------------------------------------------
@@ -144,14 +145,27 @@ def test_dag_define_time_diff_operator(dag_source: str) -> None:
 
 
 def test_dag_contiene_comentario_hook_vs_connection(dag_source: str) -> None:
-    # El enunciado pide un comentario explicando Hook vs Connection.
-    # Hook = interfaz programática; Connection = credenciales/config almacenada.
+    # El enunciado pide un comentario sobre Hook vs Connection. En el DAG queda
+    # un comentario breve; la explicación detallada vive en el doc (ver test de
+    # doc). Aquí validamos que el comentario mencione ambos conceptos y enlace.
     texto = dag_source.lower()
     assert "hook" in texto, "Falta mención de 'Hook' en el comentario"
     assert "connection" in texto, "Falta mención de 'Connection' en el comentario"
-    # Debe explicar la relación (el Hook usa/consume la Connection).
-    assert "credencial" in texto or "configuraci" in texto, (
-        "El comentario debe explicar qué almacena una Connection"
+    assert "airflow-hooks-vs-connections" in texto, (
+        "El comentario debe enlazar al doc de explicación"
+    )
+
+
+def test_doc_hooks_vs_connections_existe_y_explica() -> None:
+    # El detalle de Hook vs Connection vive en un doc repo-visible y escaneable.
+    if not DOCS_HOOKS_PATH.is_file():
+        pytest.fail(f"No existe el doc: {DOCS_HOOKS_PATH}")
+    contenido = DOCS_HOOKS_PATH.read_text(encoding="utf-8").lower()
+    assert "hook" in contenido, "El doc debe explicar qué es un Hook"
+    assert "connection" in contenido, "El doc debe explicar qué es una Connection"
+    # Debe explicar la diferencia (el Hook usa/consume la Connection).
+    assert "diferencia" in contenido or "resumen" in contenido, (
+        "El doc debe explicar la diferencia entre Hook y Connection"
     )
 
 
