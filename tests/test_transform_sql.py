@@ -2,7 +2,7 @@
 
 Estos tests NO ejecutan SQL contra BigQuery (no hay motor SQL embebido en el
 repo). Verifican que el archivo de producción exista y contenga los tokens
-contractuales derivados del spec y el design de `sql-transform-idempotente`:
+contractuales de la parte 2-3:
 
 - una única sentencia `CREATE OR REPLACE TABLE`
 - lectura desde `SANDBOX_alten_pipeline.raw_breweries`
@@ -43,7 +43,7 @@ def test_archivo_existe_y_no_esta_vacio(transform_sql: str) -> None:
 
 
 def test_una_sola_sentencia_create_or_replace(transform_sql: str) -> None:
-    # El spec exige exactamente una sentencia top-level (CREATE OR REPLACE TABLE).
+    # El enunciado exige una única consulta SQL.
     sin_comentarios = _strip_comments(transform_sql)
     # Aceptamos 0 o 1 punto y coma final, pero no múltiples sentencias.
     puntos_y_coma = sin_comentarios.count(";")
@@ -54,14 +54,14 @@ def test_una_sola_sentencia_create_or_replace(transform_sql: str) -> None:
 
 
 def test_no_hay_shell_ni_scripting(transform_sql: str) -> None:
-    # El spec prohíbe wrappers de shell o llamadas a gcloud/bq dentro del SQL.
+    # El archivo debe contener SQL, no wrappers de shell ni comandos externos.
     texto = transform_sql.lower()
     for prohibido in ("#!/bin", "gcloud", "bq query", "bash"):
         assert prohibido not in texto, f"Encontrado token de scripting: {prohibido!r}"
 
 
 def test_no_usa_merge(transform_sql: str) -> None:
-    # El design eligió CREATE OR REPLACE sobre MERGE por simplicidad/idempotencia.
+    # CREATE OR REPLACE mantiene la transformación simple e idempotente.
     assert "merge" not in transform_sql.lower(), "No debe usarse MERGE"
 
 
@@ -108,7 +108,7 @@ def test_transformation_date_es_determinista(transform_sql: str) -> None:
 
 
 def test_columnas_finales_presentes(transform_sql: str) -> None:
-    # Columnas mínimas del contrato de salida del design.
+    # Columnas mínimas esperadas en la tabla final.
     for columna in (
         "brewery_id",
         "name",
