@@ -48,8 +48,11 @@ WITH
     WHERE rn = 1
   )
 
--- Salida final + metadato de cuándo se ejecutó la transformación.
+-- Salida final + fecha de ingesta derivada del dato raw (determinística):
+-- transformation_date = DATE(ingestion_ts), no CURRENT_DATE(), para que
+-- re-ejecutar sobre el mismo raw produzca siempre el mismo resultado,
+-- incluso otro día.
 SELECT
   *,
-  CURRENT_DATE() AS transformation_date
+  DATE(ingestion_ts) AS transformation_date
 FROM deduplicated_breweries;

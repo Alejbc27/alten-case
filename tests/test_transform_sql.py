@@ -10,7 +10,7 @@ contractuales derivados del spec y el design de `sql-transform-idempotente`:
 - `brewery_id` extraído vía `JSON_VALUE(source_payload, '$.id')`
 - deduplicación por `brewery_id` con `ROW_NUMBER() ... PARTITION BY brewery_id`
 - tres CTEs con responsabilidad única
-- `CURRENT_DATE() AS transformation_date`
+- `DATE(ingestion_ts) AS transformation_date` (fecha determinística derivada del raw, no de ejecución)
 - sin `MERGE`, sin shell scripting
 """
 
@@ -97,10 +97,14 @@ def test_tres_ctes_con_responsabilidad_unica(transform_sql: str) -> None:
         assert cte in transform_sql, f"Falta la CTE {cte!r}"
 
 
-def test_transformation_date_con_current_date(transform_sql: str) -> None:
-    # El design decidió CURRENT_DATE() AS transformation_date (sobre TIMESTAMP).
-    assert "CURRENT_DATE()" in transform_sql
-    assert "transformation_date" in transform_sql
+def test_transformation_date_es_determinista(transform_sql: str) -> None:
+    # transformation_date se deriva del dato raw (fecha de ingesta), NO de
+    # CURRENT_DATE(): garantiza idempotencia fuerte (mismo raw => mismo
+    # resultado incluso si se reejecuta otro día). Validamos sobre SQL sin
+    # comentarios para no falsar el chequeo con menciones en la doc inline.
+    sin_comentarios = _strip_comments(transform_sql)
+    assert "CURRENT_DATE()" not in sin_comentarios
+    assert "DATE(ingestion_ts) AS transformation_date" in sin_comentarios
 
 
 def test_columnas_finales_presentes(transform_sql: str) -> None:
