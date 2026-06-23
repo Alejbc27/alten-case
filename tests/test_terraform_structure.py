@@ -1,8 +1,8 @@
 """Validación estructural de la infraestructura Terraform (parte 4).
 
 Estos tests NO aplican Terraform contra GCP (no hay credenciales en CI).
-Verifican que la configuración HCL exista y cumpla los contratos derivados del
-spec y el design de `terraform-bigquery-infra`:
+Verifican que la configuración HCL exista y cumpla los requisitos de
+infraestructura Terraform y el contrato de la prueba:
 
 - estructura de archivos esperada en ``terraform/`` y sus módulos
 - versiones pinadas (terraform, google, local)
@@ -68,7 +68,7 @@ def test_estructura_de_archivos_espera_existe() -> None:
 
 
 def test_no_existe_directorio_legacy_infra_terraform() -> None:
-    # El design reemplaza infra/terraform/ por terraform/ en la raíz.
+    # Estructura esperada: terraform/ en la raíz del repo, sin directorio legacy.
     assert not (REPO_ROOT / "infra" / "terraform").exists()
 
 
