@@ -11,8 +11,9 @@ infraestructura Terraform y el contrato de la prueba:
 - variables requeridas con defaults sensatos
 - datasets ``SANDBOX_alten_pipeline`` e ``INTEGRATION``
 - schemas explícitos de ``raw_breweries`` (15 columnas) e
-  ``integration_prueba_tecnica`` (10 columnas), alineados con
-  ``api_client._normalize()`` y ``sql/transform.sql``
+  ``integration_prueba_tecnica`` (10 columnas), reflejando el estado REAL
+  de las tablas en BigQuery (modos NULLABLE: las tablas las creó el pipeline
+  Python con autodetect / CREATE OR REPLACE, no Terraform)
 - service account con ``jobUser`` (proyecto) y ``dataEditor`` (datasets),
   ``google_service_account_key`` y ``local_sensitive_file``
 - ``.gitignore`` cubre tfvars, ``.terraform``, tfstate, tfplan, ``.secrets/``
@@ -129,9 +130,12 @@ def test_dataset_names_incluye_los_dos_datasets() -> None:
 
 
 # ---------------------------------------------------------------------------
-# BigQuery: schemas alineados con Python/SQL
+# BigQuery: schemas alineados con el estado REAL de las tablas en GCP
 # ---------------------------------------------------------------------------
-# Contrato derivado de api_client._normalize() (15 columnas).
+# raw_breweries se carga con load_table_from_json(autodetect=True), por lo que
+# BigQuery fuerza TODAS las columnas a NULLABLE (incluso las que el pipeline
+# siempre popula: ingestion_ts, ingestion_run_id, source_payload). El schema de
+# Terraform refleja esa realidad física para no forzar destruir/recrear la tabla.
 RAW_BREWERIES_SCHEMA = [
     ("id", "STRING", "NULLABLE"),
     ("name", "STRING", "NULLABLE"),
@@ -145,23 +149,26 @@ RAW_BREWERIES_SCHEMA = [
     ("website_url", "STRING", "NULLABLE"),
     ("longitude", "FLOAT64", "NULLABLE"),
     ("latitude", "FLOAT64", "NULLABLE"),
-    ("ingestion_ts", "TIMESTAMP", "REQUIRED"),
-    ("ingestion_run_id", "STRING", "REQUIRED"),
-    ("source_payload", "STRING", "REQUIRED"),
+    ("ingestion_ts", "TIMESTAMP", "NULLABLE"),
+    ("ingestion_run_id", "STRING", "NULLABLE"),
+    ("source_payload", "STRING", "NULLABLE"),
 ]
 
-# Contrato derivado de sql/transform.sql SELECT final (10 columnas).
+# integration_prueba_tecnica se crea con CREATE OR REPLACE TABLE AS SELECT, por
+# lo que la API de BigQuery NO devuelve ``mode`` (NULLABLE es el default). El
+# schema de Terraform omite ``mode`` para coincidir exactamente con ese estado.
+# Aquí se valida solo el par (name, type); el modo NULLABLE es implícito.
 INTEGRATION_SCHEMA = [
-    ("brewery_id", "STRING", "REQUIRED"),
-    ("name", "STRING", "NULLABLE"),
-    ("brewery_type", "STRING", "NULLABLE"),
-    ("city", "STRING", "NULLABLE"),
-    ("state", "STRING", "NULLABLE"),
-    ("country", "STRING", "NULLABLE"),
-    ("phone", "STRING", "NULLABLE"),
-    ("website_url", "STRING", "NULLABLE"),
-    ("ingestion_ts", "TIMESTAMP", "NULLABLE"),
-    ("transformation_date", "DATE", "NULLABLE"),
+    ("brewery_id", "STRING"),
+    ("name", "STRING"),
+    ("brewery_type", "STRING"),
+    ("city", "STRING"),
+    ("state", "STRING"),
+    ("country", "STRING"),
+    ("phone", "STRING"),
+    ("website_url", "STRING"),
+    ("ingestion_ts", "TIMESTAMP"),
+    ("transformation_date", "DATE"),
 ]
 
 
@@ -169,6 +176,14 @@ def _assert_schema(hcl: str, columns: list[tuple[str, str, str]]) -> None:
     for name, btype, mode in columns:
         triple = f'{{ name = "{name}", type = "{btype}", mode = "{mode}" }}'
         assert triple in hcl, f"Falta la columna {name!r} ({btype} {mode})"
+
+
+def _assert_schema_no_mode(hcl: str, columns: list[tuple[str, str]]) -> None:
+    # integration: la API no devuelve mode, así que el HCL declara solo
+    # { name = ..., type = ... } sin mode (NULLABLE implícito).
+    for name, btype in columns:
+        pair = f'{{ name = "{name}", type = "{btype}" }}'
+        assert pair in hcl, f"Falta la columna {name!r} ({btype})"
 
 
 def test_schema_raw_breweries_alineado_con_api_client() -> None:
@@ -181,7 +196,7 @@ def test_schema_raw_breweries_alineado_con_api_client() -> None:
 def test_schema_integration_alineado_con_transform_sql() -> None:
     # 10 columnas, una por cada columna del SELECT final de transform.sql.
     hcl = _read("modules/bigquery/main.tf")
-    _assert_schema(hcl, INTEGRATION_SCHEMA)
+    _assert_schema_no_mode(hcl, INTEGRATION_SCHEMA)
     assert len(INTEGRATION_SCHEMA) == 10
 
 

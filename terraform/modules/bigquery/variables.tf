@@ -17,3 +17,9 @@ variable "table_names" {
   description = "Tables to create. Map of logical key -> table id. Logical keys must be raw_breweries and integration_prueba_tecnica so the hardcoded schema lookup resolves."
   type        = map(string)
 }
+
+variable "deletion_protection" {
+  description = "BigQuery table deletion protection. Defaults to true to match the real imported tables and avoid accidental destroy. Set to false explicitly to allow controlled destruction."
+  type        = bool
+  default     = true
+}
