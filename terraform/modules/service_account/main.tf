@@ -1,7 +1,11 @@
 resource "google_service_account" "this" {
-  project      = var.project
-  account_id   = var.account_id
-  display_name = "Alten pipeline service account"
+  project    = var.project
+  account_id = var.account_id
+  # La SA real fue creada por gcloud sin --display-name, por lo que su
+  # display_name es igual al account_id (p.ej. "bq-alten-case"). Lo
+  # derivamos de la variable para documentar esa realidad y que el plan
+  # no intente modificar la SA ya existente en GCP.
+  display_name = var.account_id
 }
 
 

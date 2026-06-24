@@ -9,6 +9,11 @@ resource "google_bigquery_dataset" "this" {
 
 
 locals {
+  # Schema alineado con el estado REAL de la tabla en BigQuery. Las tablas
+  # fueron creadas por el pipeline Python (load_table_from_json / CREATE OR
+  # REPLACE TABLE), que infiere los modos como NULLABLE. Para que Terraform
+  # documente esa realidad y NO fuerce destruir/recrear tablas con datos, los
+  # modos se declaran NULLABLE incluso donde el código siempre popula el campo.
   raw_breweries_schema = jsonencode([
     { name = "id", type = "STRING", mode = "NULLABLE" },
     { name = "name", type = "STRING", mode = "NULLABLE" },
@@ -22,22 +27,25 @@ locals {
     { name = "website_url", type = "STRING", mode = "NULLABLE" },
     { name = "longitude", type = "FLOAT64", mode = "NULLABLE" },
     { name = "latitude", type = "FLOAT64", mode = "NULLABLE" },
-    { name = "ingestion_ts", type = "TIMESTAMP", mode = "REQUIRED" },
-    { name = "ingestion_run_id", type = "STRING", mode = "REQUIRED" },
-    { name = "source_payload", type = "STRING", mode = "REQUIRED" },
+    { name = "ingestion_ts", type = "TIMESTAMP", mode = "NULLABLE" },
+    { name = "ingestion_run_id", type = "STRING", mode = "NULLABLE" },
+    { name = "source_payload", type = "STRING", mode = "NULLABLE" },
   ])
 
+  # La API no devuelve ``mode`` para columnas NULLABLE creadas por CREATE OR
+  # REPLACE TABLE; por eso aqui se omite ``mode`` (NULLABLE es el default de
+  # BigQuery) y asi el schema coincide exactamente con el estado importado.
   integration_prueba_tecnica_schema = jsonencode([
-    { name = "brewery_id", type = "STRING", mode = "REQUIRED" },
-    { name = "name", type = "STRING", mode = "NULLABLE" },
-    { name = "brewery_type", type = "STRING", mode = "NULLABLE" },
-    { name = "city", type = "STRING", mode = "NULLABLE" },
-    { name = "state", type = "STRING", mode = "NULLABLE" },
-    { name = "country", type = "STRING", mode = "NULLABLE" },
-    { name = "phone", type = "STRING", mode = "NULLABLE" },
-    { name = "website_url", type = "STRING", mode = "NULLABLE" },
-    { name = "ingestion_ts", type = "TIMESTAMP", mode = "NULLABLE" },
-    { name = "transformation_date", type = "DATE", mode = "NULLABLE" },
+    { name = "brewery_id", type = "STRING" },
+    { name = "name", type = "STRING" },
+    { name = "brewery_type", type = "STRING" },
+    { name = "city", type = "STRING" },
+    { name = "state", type = "STRING" },
+    { name = "country", type = "STRING" },
+    { name = "phone", type = "STRING" },
+    { name = "website_url", type = "STRING" },
+    { name = "ingestion_ts", type = "TIMESTAMP" },
+    { name = "transformation_date", type = "DATE" },
   ])
 
   # logical table key -> (owning dataset logical key, schema json)
@@ -60,5 +68,8 @@ resource "google_bigquery_table" "this" {
   table_id   = each.value
   schema     = local.table_definitions[each.key].schema
 
-  deletion_protection = false
+  # El estado real de las tablas importadas es deletion_protection=true. Se
+  # expone como variable (default true) para documentar esa realidad y, a la
+  # vez, permitir una destrucción controlada pasandola a false a proposito.
+  deletion_protection = var.deletion_protection
 }
